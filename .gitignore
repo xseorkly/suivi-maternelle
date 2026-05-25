@@ -1,0 +1,9 @@
+node_modules/
+.pnp
+.next/
+out/
+build/
+.env.local
+.idea/
+.vscode/
+.DS_Store

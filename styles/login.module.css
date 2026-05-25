@@ -1,0 +1,128 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0052a3 100%);
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.5s ease-out;
+}
+
+.cardHeader {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.cardHeader h1 {
+  color: var(--color-primary);
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+}
+
+.cardHeader p {
+  color: var(--color-text-light);
+  font-size: 0.95rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGroup label {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.formGroup input {
+  padding: 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.formGroup input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.button {
+  padding: 12px 20px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.button:hover:not(:disabled) {
+  background-color: #0052a3;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 102, 204, 0.3);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.errorMessage {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 20px;
+}
+
+.backLink {
+  color: var(--color-primary);
+  font-weight: 500;
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+.backLink:hover {
+  color: #0052a3;
+}
+
+@media (max-width: 500px) {
+  .card {
+    padding: 30px 20px;
+  }
+
+  .cardHeader h1 {
+    font-size: 1.4rem;
+  }
+}
