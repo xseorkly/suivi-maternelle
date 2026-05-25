@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { supabase, signUp } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { signOut } from '@/lib/auth';
 import styles from '@/styles/admin.module.css';
 
