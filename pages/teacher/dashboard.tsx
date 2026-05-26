@@ -150,6 +150,12 @@ export default function TeacherDashboard() {
         <section className={styles.actionsSection}>
           <h2>Actions</h2>
           <div className={styles.actionsGrid}>
+            <Link href="/teacher/evaluation" className={styles.actionCard}>
+              <div className={styles.actionIcon}>📊</div>
+              <h3>Évaluer les compétences</h3>
+              <p>Évaluer les 10 compétences</p>
+            </Link>
+
             <Link href="/teacher/add-comment" className={styles.actionCard}>
               <div className={styles.actionIcon}>✏️</div>
               <h3>Ajouter un commentaire</h3>
