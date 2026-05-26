@@ -76,11 +76,18 @@ export default function ParentEvaluation() {
           .eq('parent_id', parentData.id);
 
         if (childrenData && childrenData.length > 0) {
-          const childList = childrenData.map(pe => pe.eleves).filter(e => e);
+          const childList = childrenData
+            .map((pe: any) => pe.eleves)
+            .filter((e: any) => e !== null);
+          
           console.log('✅ Enfants chargés:', childList);
           setChildren(childList);
+          
           // ✅ Sélectionner automatiquement le premier enfant
-          setSelectedChild(childList[0].id);
+          if (childList.length > 0 && childList[0]?.id) {
+            console.log('🎯 Premier enfant sélectionné:', childList[0].id);
+            setSelectedChild(childList[0].id);
+          }
         }
       }
 
