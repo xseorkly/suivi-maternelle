@@ -88,24 +88,27 @@ export default function AdminTeachers() {
     setMessage('');
 
     try {
-      const { data: authData } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            nom: formData.nom,
-            prenom: formData.prenom,
-          },
-        },
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          nom: formData.nom,
+          prenom: formData.prenom,
+          role: 'teacher',
+        }),
       });
 
-      if (!authData.user) {
-        setMessage('Erreur de création');
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setMessage('❌ Erreur: ' + (result.error || 'Impossible de créer l\'utilisateur'));
         setSaving(false);
         return;
       }
 
-      const userId = authData.user.id;
+      const userId = result.user_id;
 
       await supabase.from('profiles').insert([{
         id: userId,
@@ -144,6 +147,7 @@ export default function AdminTeachers() {
         setTeachers(updatedTeachers);
       }
     } catch (error) {
+      console.error(error);
       setMessage('❌ Erreur lors de l\'opération');
     }
 
