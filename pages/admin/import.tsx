@@ -80,10 +80,10 @@ export default function AdminImport() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: row['Identifiant enseignant'],
+              email: row['Identifiant enseignant'].trim().toLowerCase(),
               password: row['Mot de passe enseignant'],
-              nom: row['Nom de l\'enseignant'],
-              prenom: row['Prénom de l\'enseignant'],
+              nom: row['Nom de l\'enseignant'].trim(),
+              prenom: row['Prénom de l\'enseignant'].trim(),
               role: 'teacher',
             }),
           });
@@ -102,7 +102,7 @@ export default function AdminImport() {
             .from('enseignants')
             .insert([
               {
-                user_id: userId,
+                profile_id: userId,
                 nom: row['Nom de l\'enseignant'],
                 prenom: row['Prénom de l\'enseignant'],
               },
@@ -178,10 +178,10 @@ export default function AdminImport() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: row['Identifiant parent'],
+              email: row['Identifiant parent'].trim().toLowerCase(),
               password: row['Mot de passe parent'],
-              nom: row['Nom du parent'],
-              prenom: row['Prénom du parent'],
+              nom: row['Nom du parent'].trim(),
+              prenom: row['Prénom du parent'].trim(),
               role: 'parent',
             }),
           });
@@ -200,7 +200,7 @@ export default function AdminImport() {
             .from('parents')
             .insert([
               {
-                user_id: parentUserId,
+                profile_id: parentUserId,
                 nom: row['Nom du parent'],
                 prenom: row['Prénom du parent'],
               },
