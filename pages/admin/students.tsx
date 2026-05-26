@@ -186,7 +186,7 @@ export default function AdminStudents() {
         role: 'parent',
       }]);
 
-      const { data: parentData } = await supabase
+      const { data: parentData, error: parentError } = await supabase
         .from('parents')
         .insert([{
           user_id: userId,
@@ -195,14 +195,32 @@ export default function AdminStudents() {
         }])
         .select();
 
-      if (parentData && parentData[0] && parentForm.eleves.length > 0) {
-        await supabase.from('parents_eleves').insert(
+      if (parentError) {
+        setMessage('❌ Erreur création parent: ' + parentError.message);
+        setSaving(false);
+        return;
+      }
+
+      if (!parentData || !parentData[0]) {
+        setMessage('❌ Erreur: Impossible de créer le parent');
+        setSaving(false);
+        return;
+      }
+
+      if (parentForm.eleves.length > 0) {
+        const { error: linkError } = await supabase.from('parents_eleves').insert(
           parentForm.eleves.map((eleveId) => ({
             parent_id: parentData[0].id,
             eleve_id: eleveId,
             lien_parental: 'Parent',
           }))
         );
+
+        if (linkError) {
+          setMessage('❌ Erreur association élèves: ' + linkError.message);
+          setSaving(false);
+          return;
+        }
       }
 
       setMessage('✅ Parent créé avec succès');
