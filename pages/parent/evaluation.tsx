@@ -36,7 +36,6 @@ export default function ParentEvaluation() {
   const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'enfant' | 'parent'>('enfant');
 
-  // ✅ USEEFFECT 1 : Charger les données du parent et ses enfants
   useEffect(() => {
     const checkAuth = async () => {
       console.log('🔐 Vérification de l\'authentification...');
@@ -62,7 +61,6 @@ export default function ParentEvaluation() {
       console.log('✅ Parent authentifié:', profile);
       setUser(profile);
 
-      // Charger les enfants
       const { data: parentData } = await supabase
         .from('parents')
         .select('id')
@@ -83,7 +81,6 @@ export default function ParentEvaluation() {
           console.log('✅ Enfants chargés:', childList);
           setChildren(childList);
           
-          // ✅ Sélectionner automatiquement le premier enfant
           if (childList.length > 0 && childList[0]?.id) {
             console.log('🎯 Premier enfant sélectionné:', childList[0].id);
             setSelectedChild(childList[0].id);
@@ -97,9 +94,8 @@ export default function ParentEvaluation() {
     checkAuth();
   }, [router]);
 
-  // ✅ USEEFFECT 2 : Charger les évaluations quand l'enfant change
   useEffect(() => {
-    if (selectedChild === 0) return; // Ne rien faire si pas d'enfant sélectionné
+    if (selectedChild === 0) return;
 
     const loadEvaluations = async () => {
       console.log('📊 Chargement des évaluations pour l\'enfant:', selectedChild);
@@ -128,7 +124,7 @@ export default function ParentEvaluation() {
     };
 
     loadEvaluations();
-  }, [selectedChild]); // Se déclenche quand selectedChild change
+  }, [selectedChild]);
 
   const handleSelectEvaluation = (eval_: any) => {
     console.log('📌 Évaluation sélectionnée:', eval_);
@@ -157,7 +153,6 @@ export default function ParentEvaluation() {
       </header>
 
       <main className={styles.main}>
-        {/* Sélection de l'enfant */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ fontWeight: 'bold', marginRight: '10px' }}>
             👧 Enfant :
@@ -180,7 +175,6 @@ export default function ParentEvaluation() {
 
         {selectedChild > 0 && (
           <>
-            {/* Mode de vue */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               <button
                 onClick={() => setViewMode('enfant')}
@@ -193,7 +187,7 @@ export default function ParentEvaluation() {
                   cursor: 'pointer',
                 }}
               >
-                👧 Vue enfant (colorée et sympa)
+                👧 Vue enfant
               </button>
               <button
                 onClick={() => setViewMode('parent')}
@@ -206,14 +200,13 @@ export default function ParentEvaluation() {
                   cursor: 'pointer',
                 }}
               >
-                👨‍👩‍👧 Vue parent (détaillée)
+                👨‍👩‍👧 Vue parent
               </button>
             </div>
 
-            {/* Liste des évaluations */}
             {evaluations.length > 0 ? (
               <div style={{ marginBottom: '20px' }}>
-                <h3>📅 Évaluations disponibles :</h3>
+                <h3>📅 Évaluations :</h3>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {evaluations.map(eval_ => (
                     <button
@@ -228,26 +221,22 @@ export default function ParentEvaluation() {
                         cursor: 'pointer',
                       }}
                     >
-                      📅 {new Date(eval_.date_evaluation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      📅 {new Date(eval_.date_evaluation).toLocaleDateString('fr-FR')}
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
-              <p style={{ color: '#999', fontStyle: 'italic' }}>Aucune évaluation disponible pour le moment.</p>
+              <p style={{ color: '#999' }}>Aucune évaluation disponible.</p>
             )}
 
-            {/* Affichage de l'évaluation */}
             {selectedEvaluation && (
               <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
-                <h2>
-                  {viewMode === 'enfant' ? `✨ Mes progrès - ${currentChild?.prenom}` : `📊 Évaluation détaillée - ${currentChild?.prenom}`}
-                </h2>
+                <h2>{viewMode === 'enfant' ? '✨ Mes progrès' : '📊 Évaluation'}</h2>
 
                 {viewMode === 'enfant' ? (
-                  // VUE ENFANT - COLORÉE ET JOYEUSE
                   <div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                       {COMPETENCES.map(comp => {
                         const niveau = selectedEvaluation[comp.key];
                         const niveauInfo = NIVEAUX[niveau];
@@ -262,7 +251,7 @@ export default function ParentEvaluation() {
                               textAlign: 'center',
                             }}
                           >
-                            <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{comp.label}</h4>
+                            <h4 style={{ margin: '0 0 10px 0' }}>{comp.label}</h4>
                             {niveauInfo && (
                               <>
                                 <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
@@ -277,26 +266,14 @@ export default function ParentEvaluation() {
                         );
                       })}
                     </div>
-
-                    {/* Commentaires pour l'enfant */}
-                    {selectedEvaluation.commentaire_enseignant && (
-                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
-                        <h4>💬 Message de ta maîtresse :</h4>
-                        <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
-                          {selectedEvaluation.commentaire_enseignant}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  // VUE PARENT - DÉTAILLÉE
                   <div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#e3f2fd' }}>
                           <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Compétence</th>
                           <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Niveau</th>
-                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -304,33 +281,16 @@ export default function ParentEvaluation() {
                           const niveau = selectedEvaluation[comp.key];
                           const niveauInfo = NIVEAUX[niveau];
                           return (
-                            <tr key={comp.key} style={{ backgroundColor: niveauInfo ? niveauInfo.color + '11' : '#fff' }}>
+                            <tr key={comp.key}>
                               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{comp.labelComplet}</td>
-                              <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', fontWeight: 'bold' }}>
-                                {niveauInfo ? niveauInfo.symbols : '-'}
-                              </td>
                               <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', color: niveauInfo ? niveauInfo.color : '#999' }}>
-                                {niveauInfo ? niveauInfo.messageParent : 'Non évalué'}
+                                {niveauInfo ? niveauInfo.symbols : '-'} {niveauInfo ? niveauInfo.messageParent : 'Non évalué'}
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
-
-                    {/* Commentaires pour le parent */}
-                    {selectedEvaluation.commentaire_enseignant && (
-                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
-                        <h4>📝 Commentaires de l'enseignant :</h4>
-                        <p style={{ lineHeight: '1.6' }}>
-                          {selectedEvaluation.commentaire_enseignant}
-                        </p>
-                      </div>
-                    )}
-
-                    <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '20px' }}>
-                      📅 Évaluation du {new Date(selectedEvaluation.date_evaluation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
                   </div>
                 )}
               </div>
