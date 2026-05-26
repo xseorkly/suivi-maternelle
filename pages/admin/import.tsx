@@ -75,40 +75,34 @@ export default function AdminImport() {
 
       for (const row of result.data) {
         try {
-          // Créer l'utilisateur Auth
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: row['Identifiant enseignant'],
-            password: row['Mot de passe enseignant'],
-            options: {
-              data: {
-                nom: row['Nom de l\'enseignant'],
-                prenom: row['Prénom de l\'enseignant'],
-                role: 'enseignant',
-              },
-            },
+          // ✅ UTILISER L'API ROUTE AU LIEU DE signUp()
+          const createUserResponse = await fetch('/api/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: row['Identifiant enseignant'],
+              password: row['Mot de passe enseignant'],
+              nom: row['Nom de l\'enseignant'],
+              prenom: row['Prénom de l\'enseignant'],
+              role: 'teacher',
+            }),
           });
 
-          if (authError || !authData.user) {
+          const createUserData = await createUserResponse.json();
+
+          if (!createUserResponse.ok || !createUserData.success) {
             errorCount++;
             continue;
           }
 
-          // Créer le profil
-          await supabase.from('profiles').insert([
-            {
-              id: authData.user.id,
-              nom: row['Nom de l\'enseignant'],
-              prenom: row['Prénom de l\'enseignant'],
-              role: 'enseignant',
-            },
-          ]);
+          const userId = createUserData.user_id;
 
-          // Créer l'enseignant
+          // Le profil est déjà créé par l'API, on peut juste créer l'enseignant
           const { data: teacherData } = await supabase
             .from('enseignants')
             .insert([
               {
-                profile_id: authData.user.id,
+                user_id: userId,
                 nom: row['Nom de l\'enseignant'],
                 prenom: row['Prénom de l\'enseignant'],
               },
@@ -135,6 +129,7 @@ export default function AdminImport() {
 
           successCount++;
         } catch (error) {
+          console.error(error);
           errorCount++;
         }
       }
@@ -148,6 +143,7 @@ export default function AdminImport() {
 
       setMessage(`Import réussi: ${successCount} enseignants créés, ${errorCount} erreurs`);
     } catch (error) {
+      console.error(error);
       setMessage('Erreur lors de l\'import');
     }
 
@@ -177,40 +173,34 @@ export default function AdminImport() {
 
       for (const row of result.data) {
         try {
-          // Créer le parent
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: row['Identifiant parent'],
-            password: row['Mot de passe parent'],
-            options: {
-              data: {
-                nom: row['Nom du parent'],
-                prenom: row['Prénom du parent'],
-                role: 'parent',
-              },
-            },
+          // ✅ UTILISER L'API ROUTE POUR CRÉER LE PARENT
+          const createParentResponse = await fetch('/api/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: row['Identifiant parent'],
+              password: row['Mot de passe parent'],
+              nom: row['Nom du parent'],
+              prenom: row['Prénom du parent'],
+              role: 'parent',
+            }),
           });
 
-          if (authError || !authData.user) {
+          const createParentData = await createParentResponse.json();
+
+          if (!createParentResponse.ok || !createParentData.success) {
             errorCount++;
             continue;
           }
 
-          // Créer le profil parent
-          await supabase.from('profiles').insert([
-            {
-              id: authData.user.id,
-              nom: row['Nom du parent'],
-              prenom: row['Prénom du parent'],
-              role: 'parent',
-            },
-          ]);
+          const parentUserId = createParentData.user_id;
 
           // Créer l'enregistrement parent
           const { data: parentData } = await supabase
             .from('parents')
             .insert([
               {
-                profile_id: authData.user.id,
+                user_id: parentUserId,
                 nom: row['Nom du parent'],
                 prenom: row['Prénom du parent'],
               },
@@ -253,6 +243,7 @@ export default function AdminImport() {
 
           successCount++;
         } catch (error) {
+          console.error(error);
           errorCount++;
         }
       }
@@ -266,6 +257,7 @@ export default function AdminImport() {
 
       setMessage(`Import réussi: ${successCount} élèves/parents créés, ${errorCount} erreurs`);
     } catch (error) {
+      console.error(error);
       setMessage('Erreur lors de l\'import');
     }
 
