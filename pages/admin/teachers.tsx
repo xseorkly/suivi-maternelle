@@ -45,19 +45,13 @@ export default function AdminTeachers() {
         .from('enseignants')
         .select('*, profile:profiles(id, nom, prenom)')
         .order('nom');
-
-      if (teachersData) {
-        setTeachers(teachersData);
-      }
+      if (teachersData) setTeachers(teachersData);
 
       const { data: classesData } = await supabase
         .from('classes')
         .select('*')
         .order('nom_classe');
-
-      if (classesData) {
-        setClasses(classesData);
-      }
+      if (classesData) setClasses(classesData);
 
       setLoading(false);
     };
@@ -110,42 +104,53 @@ export default function AdminTeachers() {
 
       const userId = result.user_id;
 
-      await supabase.from('profiles').insert([{
-        id: userId,
-        nom: formData.nom,
-        prenom: formData.prenom,
-        role: 'teacher',
-      }]);
-
-      const { data: teacherData } = await supabase
+      const { data: teacherData, error: teacherError } = await supabase
         .from('enseignants')
         .insert([{
-          user_id: userId,
+          profile_id: userId,
           nom: formData.nom,
           prenom: formData.prenom,
         }])
         .select();
 
-      if (teacherData && teacherData[0] && formData.classes.length > 0) {
-        await supabase.from('enseignants_classes').insert(
-          formData.classes.map((classId) => ({
-            enseignant_id: teacherData[0].id,
-            classe_id: classId,
-          }))
-        );
+      if (teacherError) {
+        setMessage('❌ Erreur création enseignant: ' + teacherError.message);
+        setSaving(false);
+        return;
+      }
+
+      if (!teacherData || !teacherData[0]) {
+        setMessage('❌ Erreur: Impossible de créer l\'enseignant');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.classes.length > 0) {
+        const { error: classError } = await supabase
+          .from('enseignants_classes')
+          .insert(
+            formData.classes.map((classId) => ({
+              enseignant_id: teacherData[0].id,
+              classe_id: classId,
+            }))
+          );
+
+        if (classError) {
+          setMessage('❌ Erreur association classes: ' + classError.message);
+          setSaving(false);
+          return;
+        }
       }
 
       setMessage('✅ Enseignant créé avec succès');
-      resetForm();
+      setFormData({ nom: '', prenom: '', email: '', password: '', classes: [] });
+      setShowForm(false);
 
       const { data: updatedTeachers } = await supabase
         .from('enseignants')
         .select('*, profile:profiles(id, nom, prenom)')
         .order('nom');
-
-      if (updatedTeachers) {
-        setTeachers(updatedTeachers);
-      }
+      if (updatedTeachers) setTeachers(updatedTeachers);
     } catch (error) {
       console.error(error);
       setMessage('❌ Erreur lors de l\'opération');
@@ -169,11 +174,6 @@ export default function AdminTeachers() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({ nom: '', prenom: '', email: '', password: '', classes: [] });
-    setShowForm(false);
-  };
-
   const handleLogout = async () => {
     await signOut();
     router.push('/');
@@ -189,7 +189,7 @@ export default function AdminTeachers() {
         <Link href="/admin/dashboard" className={styles.headerBack}>
           ← Tableau de bord
         </Link>
-        <h1>Gestion des enseignants</h1>
+        <h1>Enseignants</h1>
         <button onClick={handleLogout} className={styles.logoutBtn}>
           Déconnexion
         </button>
@@ -269,7 +269,7 @@ export default function AdminTeachers() {
                   type="text"
                   value={formData.prenom}
                   onChange={handleInputChange}
-                  placeholder="Marie"
+                  placeholder="Jean"
                   required
                 />
               </div>
@@ -295,7 +295,7 @@ export default function AdminTeachers() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="marie.dupont@ecole.fr"
+                  placeholder="jean.dupont@email.com"
                   required
                 />
               </div>
@@ -315,18 +315,22 @@ export default function AdminTeachers() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Classes associées</label>
+                <label>Classes assignées</label>
                 <div style={{ display: 'grid', gap: '10px' }}>
-                  {classes.map((classe) => (
-                    <label key={classe.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.classes.includes(classe.id)}
-                        onChange={() => handleClassToggle(classe.id)}
-                      />
-                      {classe.nom_classe} ({classe.niveau})
-                    </label>
-                  ))}
+                  {classes.length > 0 ? (
+                    classes.map((classe) => (
+                      <label key={classe.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.classes.includes(classe.id)}
+                          onChange={() => handleClassToggle(classe.id)}
+                        />
+                        {classe.nom_classe} ({classe.niveau})
+                      </label>
+                    ))
+                  ) : (
+                    <p style={{ color: '#999' }}>Aucune classe disponible</p>
+                  )}
                 </div>
               </div>
 
@@ -349,7 +353,10 @@ export default function AdminTeachers() {
                 </button>
                 <button
                   type="button"
-                  onClick={resetForm}
+                  onClick={() => {
+                    setShowForm(false);
+                    setMessage('');
+                  }}
                   style={{
                     flex: 1,
                     backgroundColor: '#6c757d',

@@ -179,13 +179,6 @@ export default function AdminStudents() {
 
       const userId = result.user_id;
 
-      await supabase.from('profiles').insert([{
-        id: userId,
-        nom: parentForm.nom,
-        prenom: parentForm.prenom,
-        role: 'parent',
-      }]);
-
       const { data: parentData, error: parentError } = await supabase
         .from('parents')
         .insert([{
