@@ -95,7 +95,10 @@ export default function ParentEvaluation() {
   }, [router]);
 
   useEffect(() => {
-    if (selectedChild === 0) return;
+    if (selectedChild === 0) {
+      console.log('⚠️ selectedChild est 0, je n\'exécute rien');
+      return;
+    }
 
     const loadEvaluations = async () => {
       console.log('📊 Chargement des évaluations pour l\'enfant:', selectedChild);
@@ -104,10 +107,11 @@ export default function ParentEvaluation() {
         .from('evaluations')
         .select('*')
         .eq('eleve_id', selectedChild)
-        console.log('🔍 QUERY ERROR:', error);
-        console.log('🔍 QUERY DATA:', evalData);
-        console.log('🔍 SELECTED CHILD:', selectedChild);
         .order('date_evaluation', { ascending: false });
+
+      console.log('🔍 QUERY ERROR:', error);
+      console.log('🔍 QUERY DATA:', evalData);
+      console.log('🔍 SELECTED CHILD:', selectedChild);
 
       if (error) {
         console.error('❌ Erreur lors du chargement:', error);
@@ -269,6 +273,12 @@ export default function ParentEvaluation() {
                         );
                       })}
                     </div>
+                    {selectedEvaluation.commentaire_enseignant && (
+                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)', marginTop: '20px' }}>
+                        <h4>💬 Message de la maîtresse :</h4>
+                        <p>{selectedEvaluation.commentaire_enseignant}</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -294,6 +304,12 @@ export default function ParentEvaluation() {
                         })}
                       </tbody>
                     </table>
+                    {selectedEvaluation.commentaire_enseignant && (
+                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
+                        <h4>📝 Commentaires de l\'enseignant :</h4>
+                        <p>{selectedEvaluation.commentaire_enseignant}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
