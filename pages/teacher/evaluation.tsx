@@ -30,6 +30,7 @@ export default function TeacherEvaluation() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [teacherId, setTeacherId] = useState<number>(0);
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<number>(0);
@@ -60,12 +61,26 @@ export default function TeacherEvaluation() {
 
       setUser(profile);
 
-      // Charger les classes
-      const { data: classesData } = await supabase
-        .from('classes')
-        .select('*')
-        .order('nom_classe');
-      if (classesData) setClasses(classesData);
+      // ✅ SÉCURITÉ : Charger uniquement les PROPRES classes de l'enseignant
+      const { data: teacherData } = await supabase
+        .from('enseignants')
+        .select('id')
+        .eq('profile_id', user.id)
+        .single();
+
+      if (teacherData) {
+        setTeacherId(teacherData.id);
+
+        // ✅ Charger les classes de CET enseignant uniquement
+        const { data: classesData } = await supabase
+          .from('enseignants_classes')
+          .select('classe_id, classes(id, nom_classe, niveau)')
+          .eq('enseignant_id', teacherData.id);
+
+        if (classesData) {
+          setClasses(classesData.map((c: any) => c.classes));
+        }
+      }
 
       setLoading(false);
     };
@@ -79,6 +94,7 @@ export default function TeacherEvaluation() {
     setEvaluation({});
     setComment('');
 
+    // ✅ SÉCURITÉ : Charger uniquement les élèves de CETTE classe
     const { data: studentsData } = await supabase
       .from('eleves')
       .select('*')
@@ -130,15 +146,9 @@ export default function TeacherEvaluation() {
     setMessage('');
 
     try {
-      const { data: teacher } = await supabase
-        .from('enseignants')
-        .select('id')
-        .eq('profile_id', user.id)
-        .single();
-
       const evaluationData: any = {
         eleve_id: selectedStudent,
-        enseignant_id: teacher.id,
+        enseignant_id: teacherId,
         classe_id: selectedClass,
         date_evaluation: new Date().toISOString().split('T')[0],
         commentaire_enseignant: comment,
