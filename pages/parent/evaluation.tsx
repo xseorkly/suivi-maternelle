@@ -1,0 +1,302 @@
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/auth';
+import styles from '@/styles/admin.module.css';
+
+const COMPETENCES = [
+  { key: 'gestion_emotions', label: '😊 Je gère mes émotions', labelComplet: 'Gestion des émotions' },
+  { key: 'garder_calme', label: '🧘 Je garde mon calme', labelComplet: 'Garder son calme' },
+  { key: 'utiliser_mots', label: '💬 Utiliser des mots', labelComplet: 'Utiliser des mots pour exprimer' },
+  { key: 'demander_aide', label: '🙋 Demander de l\'aide', labelComplet: 'Demander l\'aide d\'un adulte' },
+  { key: 'vivre_ensemble', label: '👫 Vivre avec les autres', labelComplet: 'Vivre bien avec les autres' },
+  { key: 'cooperer', label: '🤝 Coopérer', labelComplet: 'Coopérer avec les autres' },
+  { key: 'respecter_autres', label: '🫱 Respecter', labelComplet: 'Respecter les autres' },
+  { key: 'faire_travail', label: '📚 Faire son travail', labelComplet: 'Faire son travail d\'élève' },
+  { key: 'ecouter_consignes', label: '👂 Écouter', labelComplet: 'Écouter les consignes' },
+  { key: 'attendre_tour', label: '🚦 Attendre son tour', labelComplet: 'Attendre son tour' },
+];
+
+const NIVEAUX: any = {
+  5: { symbols: '☀️☀️☀️', label: 'Excellent !', color: '#4CAF50', messageEnfant: '🎉 Bravo ! Tu es une super star !', messageParent: 'Compétence maîtrisée' },
+  4: { symbols: '☀️☀️', label: 'Bien !', color: '#8BC34A', messageEnfant: '👍 Bien joué ! Tu progresses !', messageParent: 'En voie d\'acquisition' },
+  3: { symbols: '☁️', label: 'Moyen', color: '#FFC107', messageEnfant: '☁️ C\'est normal ! On va continuer ensemble', messageParent: 'À travailler. En cours d\'apprentissage.' },
+  2: { symbols: '☁️⛈️', label: 'Difficultés', color: '#FF9800', messageEnfant: '💪 C\'est difficile, mais ne t\'inquiète pas, on va t\'aider !', messageParent: 'Difficultés. Soutien recommandé à la maison.' },
+  1: { symbols: '⛈️', label: 'Très difficile', color: '#F44336', messageEnfant: '🤝 Besoin d\'aide spéciale, on travaille ensemble', messageParent: 'Action requise. Contact avec l\'enseignant.' },
+};
+
+export default function ParentEvaluation() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChild, setSelectedChild] = useState<number>(0);
+  const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'enfant' | 'parent'>('enfant');
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login/parent');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || profile.role !== 'parent') {
+        router.push('/');
+        return;
+      }
+
+      setUser(profile);
+
+      // Charger les enfants du parent
+      const { data: parentData } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('profile_id', user.id)
+        .single();
+
+      if (parentData) {
+        const { data: childrenData } = await supabase
+          .from('parents_eleves')
+          .select('eleve_id, eleves(*)')
+          .eq('parent_id', parentData.id);
+
+        if (childrenData) {
+          setChildren(childrenData.map(pe => pe.eleves));
+        }
+      }
+
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const handleChildChange = async (childId: number) => {
+    setSelectedChild(childId);
+    setSelectedEvaluation(null);
+
+    const { data: evalData } = await supabase
+      .from('evaluations')
+      .select('*')
+      .eq('eleve_id', childId)
+      .order('date_evaluation', { ascending: false });
+
+    if (evalData) setEvaluations(evalData);
+  };
+
+  const handleSelectEvaluation = (eval_: any) => {
+    setSelectedEvaluation(eval_);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  if (loading) return <div className={styles.container}>Chargement...</div>;
+
+  const currentChild = children.find(c => c.id === selectedChild);
+
+  return (
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <Link href="/parent/dashboard" className={styles.headerBack}>
+          ← Tableau de bord
+        </Link>
+        <h1>📊 Suivi des compétences</h1>
+        <button onClick={handleLogout} className={styles.logoutBtn}>
+          Déconnexion
+        </button>
+      </header>
+
+      <main className={styles.main}>
+        {/* Sélection de l'enfant */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>
+            👧 Enfant :
+          </label>
+          <select
+            value={selectedChild}
+            onChange={(e) => handleChildChange(parseInt(e.target.value))}
+            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+          >
+            <option value={0}>-- Sélectionner --</option>
+            {children.map(c => (
+              <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
+            ))}
+          </select>
+        </div>
+
+        {selectedChild > 0 && (
+          <>
+            {/* Mode de vue */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <button
+                onClick={() => setViewMode('enfant')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: viewMode === 'enfant' ? 'var(--color-primary)' : '#ddd',
+                  color: viewMode === 'enfant' ? 'white' : 'black',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                👧 Vue enfant (colorée et sympa)
+              </button>
+              <button
+                onClick={() => setViewMode('parent')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: viewMode === 'parent' ? 'var(--color-primary)' : '#ddd',
+                  color: viewMode === 'parent' ? 'white' : 'black',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                👨‍👩‍👧 Vue parent (détaillée)
+              </button>
+            </div>
+
+            {/* Liste des évaluations */}
+            {evaluations.length > 0 ? (
+              <div style={{ marginBottom: '20px' }}>
+                <h3>📅 Évaluations disponibles :</h3>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {evaluations.map(eval_ => (
+                    <button
+                      key={eval_.id}
+                      onClick={() => handleSelectEvaluation(eval_)}
+                      style={{
+                        padding: '10px 15px',
+                        backgroundColor: selectedEvaluation?.id === eval_.id ? 'var(--color-primary)' : '#f0f0f0',
+                        color: selectedEvaluation?.id === eval_.id ? 'white' : 'black',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📅 {new Date(eval_.date_evaluation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p style={{ color: '#999', fontStyle: 'italic' }}>Aucune évaluation disponible pour le moment.</p>
+            )}
+
+            {/* Affichage de l'évaluation */}
+            {selectedEvaluation && (
+              <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
+                <h2>
+                  {viewMode === 'enfant' ? `✨ Mes progrès - ${currentChild?.prenom}` : `📊 Évaluation détaillée - ${currentChild?.prenom}`}
+                </h2>
+
+                {viewMode === 'enfant' ? (
+                  // VUE ENFANT - COLORÉE ET JOYEUSE
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                      {COMPETENCES.map(comp => {
+                        const niveau = selectedEvaluation[comp.key];
+                        const niveauInfo = NIVEAUX[niveau];
+                        return (
+                          <div
+                            key={comp.key}
+                            style={{
+                              padding: '15px',
+                              borderRadius: '8px',
+                              backgroundColor: niveauInfo ? niveauInfo.color + '22' : '#f0f0f0',
+                              border: `3px solid ${niveauInfo ? niveauInfo.color : '#ddd'}`,
+                              textAlign: 'center',
+                            }}
+                          >
+                            <h4 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{comp.label}</h4>
+                            {niveauInfo && (
+                              <>
+                                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
+                                  {niveauInfo.symbols}
+                                </div>
+                                <p style={{ margin: '10px 0', fontWeight: 'bold', color: niveauInfo.color }}>
+                                  {niveauInfo.messageEnfant}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Commentaires pour l'enfant */}
+                    {selectedEvaluation.commentaire_enseignant && (
+                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
+                        <h4>💬 Message de ta maîtresse :</h4>
+                        <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+                          {selectedEvaluation.commentaire_enseignant}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // VUE PARENT - DÉTAILLÉE
+                  <div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#e3f2fd' }}>
+                          <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Compétence</th>
+                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Niveau</th>
+                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {COMPETENCES.map(comp => {
+                          const niveau = selectedEvaluation[comp.key];
+                          const niveauInfo = NIVEAUX[niveau];
+                          return (
+                            <tr key={comp.key} style={{ backgroundColor: niveauInfo ? niveauInfo.color + '11' : '#fff' }}>
+                              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{comp.labelComplet}</td>
+                              <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', fontWeight: 'bold' }}>
+                                {niveauInfo ? niveauInfo.symbols : '-'}
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', color: niveauInfo ? niveauInfo.color : '#999' }}>
+                                {niveauInfo ? niveauInfo.messageParent : 'Non évalué'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Commentaires pour le parent */}
+                    {selectedEvaluation.commentaire_enseignant && (
+                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
+                        <h4>📝 Commentaires de l'enseignant :</h4>
+                        <p style={{ lineHeight: '1.6' }}>
+                          {selectedEvaluation.commentaire_enseignant}
+                        </p>
+                      </div>
+                    )}
+
+                    <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '20px' }}>
+                      📅 Évaluation du {new Date(selectedEvaluation.date_evaluation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
