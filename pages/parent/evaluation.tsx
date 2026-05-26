@@ -104,6 +104,9 @@ export default function ParentEvaluation() {
         .from('evaluations')
         .select('*')
         .eq('eleve_id', selectedChild)
+        console.log('🔍 QUERY ERROR:', error);
+        console.log('🔍 QUERY DATA:', evalData);
+        console.log('🔍 SELECTED CHILD:', selectedChild);
         .order('date_evaluation', { ascending: false });
 
       if (error) {
