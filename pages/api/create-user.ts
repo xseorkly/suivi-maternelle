@@ -17,8 +17,11 @@ export default async function handler(
   try {
     const { email, password, nom, prenom, role } = req.body;
 
+    // 🔧 Trim l'email pour éviter les doublons accidentels avec espaces
+    const cleanEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email: email,
+      email: cleanEmail,
       password: password,
       email_confirm: true,
       user_metadata: {
@@ -54,7 +57,7 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       user_id: data.user.id,
-      email: email,
+      email: cleanEmail,
     });
   } catch (error) {
     console.error(error);
