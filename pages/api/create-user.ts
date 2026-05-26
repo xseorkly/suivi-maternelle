@@ -1,5 +1,10 @@
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import type { NextApiRequest, NextApiResponse } from 'next';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,9 +16,8 @@ export default async function handler(
 
   try {
     const { email, password, nom, prenom, role } = req.body;
-    const supabase = createServerSupabaseClient({ req, res });
 
-    const { data, error } = await supabase.auth.admin.createUser({
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
       email_confirm: true,
@@ -32,14 +36,16 @@ export default async function handler(
       return res.status(400).json({ error: 'Échec de la création' });
     }
 
-    const { error: profileError } = await supabase.from('profiles').insert([
-      {
-        id: data.user.id,
-        nom: nom,
-        prenom: prenom,
-        role: role,
-      },
-    ]);
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert([
+        {
+          id: data.user.id,
+          nom: nom,
+          prenom: prenom,
+          role: role,
+        },
+      ]);
 
     if (profileError) {
       return res.status(400).json({ error: profileError.message });
