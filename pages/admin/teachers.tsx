@@ -44,7 +44,6 @@ export default function AdminTeachers() {
         return;
       }
 
-      // Récupérer les enseignants
       const { data: teachersData } = await supabase
         .from('enseignants')
         .select('*, profile:profiles(id, nom, prenom)')
@@ -54,7 +53,6 @@ export default function AdminTeachers() {
         setTeachers(teachersData);
       }
 
-      // Récupérer les classes
       const { data: classesData } = await supabase
         .from('classes')
         .select('*')
@@ -93,56 +91,34 @@ export default function AdminTeachers() {
     setMessage('');
 
     try {
-      // Créer l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            nom: formData.nom,
-            prenom: formData.prenom,
-            role: 'enseignant',
-          },
-        },
+      // ✅ UTILISER L'API ROUTE
+      const createUserResponse = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          nom: formData.nom,
+          prenom: formData.prenom,
+          role: 'teacher',
+        }),
       });
 
-      if (authError) {
-        setMessage('Erreur: ' + authError.message);
+      const createUserData = await createUserResponse.json();
+
+      if (!createUserResponse.ok || !createUserData.success) {
+        setMessage('Erreur: ' + (createUserData.error || 'Impossible de créer l\'utilisateur'));
         setSaving(false);
         return;
       }
 
-      if (!authData.user) {
-        setMessage('Erreur lors de la création du compte');
-        setSaving(false);
-        return;
-      }
+      const userId = createUserData.user_id;
 
-      // Créer le profil de l'enseignant
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            nom: formData.nom,
-            prenom: formData.prenom,
-            role: 'enseignant',
-          },
-        ])
-        .select();
-
-      if (profileError) {
-        setMessage('Erreur lors de la création du profil');
-        setSaving(false);
-        return;
-      }
-
-      // Créer l'enregistrement enseignant
       const { data: teacherData, error: teacherError } = await supabase
         .from('enseignants')
         .insert([
           {
-            profile_id: authData.user.id,
+            user_id: userId,
             nom: formData.nom,
             prenom: formData.prenom,
           },
@@ -155,7 +131,6 @@ export default function AdminTeachers() {
         return;
       }
 
-      // Associer aux classes
       if (teacherData && teacherData[0] && formData.classes.length > 0) {
         const classAssociations = formData.classes.map((classId) => ({
           enseignant_id: teacherData[0].id,
@@ -176,7 +151,6 @@ export default function AdminTeachers() {
       setMessage('Enseignant créé avec succès');
       resetForm();
 
-      // Recharger les enseignants
       const { data: updatedTeachers } = await supabase
         .from('enseignants')
         .select('*, profile:profiles(id, nom, prenom)')
@@ -186,6 +160,7 @@ export default function AdminTeachers() {
         setTeachers(updatedTeachers);
       }
     } catch (error) {
+      console.error(error);
       setMessage('Erreur lors de l\'opération');
     }
 
@@ -195,13 +170,8 @@ export default function AdminTeachers() {
   const handleDelete = async (teacherId: number, profileId: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cet enseignant ?')) {
       try {
-        // Supprimer les associations
         await supabase.from('enseignants_classes').delete().eq('enseignant_id', teacherId);
-
-        // Supprimer l'enseignant
         await supabase.from('enseignants').delete().eq('id', teacherId);
-
-        // Supprimer le profil
         await supabase.auth.admin.deleteUser(profileId);
 
         setTeachers(teachers.filter((t) => t.id !== teacherId));
