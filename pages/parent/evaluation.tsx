@@ -38,10 +38,8 @@ export default function ParentEvaluation() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      console.log('🔐 Vérification de l\'authentification...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('❌ Pas d\'utilisateur, redirection vers login');
         router.push('/login/parent');
         return;
       }
@@ -53,12 +51,10 @@ export default function ParentEvaluation() {
         .single();
 
       if (!profile || profile.role !== 'parent') {
-        console.log('❌ Pas un parent, redirection');
         router.push('/');
         return;
       }
 
-      console.log('✅ Parent authentifié:', profile);
       setUser(profile);
 
       const { data: parentData } = await supabase
@@ -74,15 +70,9 @@ export default function ParentEvaluation() {
           .eq('parent_id', parentData.id);
 
         if (childrenData && childrenData.length > 0) {
-          const childList = childrenData
-            .map((pe: any) => pe.eleves)
-            .filter((e: any) => e !== null);
-          
-          console.log('✅ Enfants chargés:', childList);
+          const childList = childrenData.map((pe: any) => pe.eleves).filter((e: any) => e !== null);
           setChildren(childList);
-          
           if (childList.length > 0 && childList[0]?.id) {
-            console.log('🎯 Premier enfant sélectionné:', childList[0].id);
             setSelectedChild(childList[0].id);
           }
         }
@@ -95,35 +85,23 @@ export default function ParentEvaluation() {
   }, [router]);
 
   useEffect(() => {
-    if (selectedChild === 0) {
-      console.log('⚠️ selectedChild est 0, je n\'exécute rien');
-      return;
-    }
+    if (selectedChild === 0) return;
 
     const loadEvaluations = async () => {
-      console.log('📊 Chargement des évaluations pour l\'enfant:', selectedChild);
-      
       const { data: evalData, error } = await supabase
         .from('evaluations')
         .select('*')
         .eq('eleve_id', selectedChild)
         .order('date_evaluation', { ascending: false });
 
-      console.log('🔍 QUERY ERROR:', error);
-      console.log('🔍 QUERY DATA:', evalData);
-      console.log('🔍 SELECTED CHILD:', selectedChild);
-
       if (error) {
-        console.error('❌ Erreur lors du chargement:', error);
         setEvaluations([]);
         return;
       }
 
       if (evalData && evalData.length > 0) {
-        console.log('✅ Évaluations trouvées:', evalData);
         setEvaluations(evalData);
       } else {
-        console.log('⚠️ Aucune évaluation trouvée');
         setEvaluations([]);
       }
 
@@ -134,7 +112,6 @@ export default function ParentEvaluation() {
   }, [selectedChild]);
 
   const handleSelectEvaluation = (eval_: any) => {
-    console.log('📌 Évaluation sélectionnée:', eval_);
     setSelectedEvaluation(eval_);
   };
 
@@ -161,16 +138,10 @@ export default function ParentEvaluation() {
 
       <main className={styles.main}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>
-            👧 Enfant :
-          </label>
+          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Enfant :</label>
           <select
             value={selectedChild}
-            onChange={(e) => {
-              const newChildId = parseInt(e.target.value);
-              console.log('🔄 Changement d\'enfant:', newChildId);
-              setSelectedChild(newChildId);
-            }}
+            onChange={(e) => setSelectedChild(parseInt(e.target.value))}
             style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           >
             <option value={0}>-- Sélectionner --</option>
@@ -273,12 +244,6 @@ export default function ParentEvaluation() {
                         );
                       })}
                     </div>
-                    {selectedEvaluation.commentaire_enseignant && (
-                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)', marginTop: '20px' }}>
-                        <h4>💬 Message de la maîtresse :</h4>
-                        <p>{selectedEvaluation.commentaire_enseignant}</p>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div>
@@ -304,12 +269,6 @@ export default function ParentEvaluation() {
                         })}
                       </tbody>
                     </table>
-                    {selectedEvaluation.commentaire_enseignant && (
-                      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
-                        <h4>📝 Commentaires de l\'enseignant :</h4>
-                        <p>{selectedEvaluation.commentaire_enseignant}</p>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
