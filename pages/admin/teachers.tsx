@@ -90,7 +90,7 @@ export default function AdminTeachers() {
           password: formData.password,
           nom: formData.nom,
           prenom: formData.prenom,
-          role: 'teacher',
+          role: 'enseignant',
         }),
       });
 
