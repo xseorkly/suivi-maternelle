@@ -1,16 +1,22 @@
 -- ============================================
--- 11_POLICIES_EVALUATIONS.SQL
--- Policies RLS pour la table evaluations
+-- 11_POLICIES_EVALUATIONS_FIXED.SQL
+-- Policies RLS simplifiées pour evaluations
 -- ============================================
 
--- Activer RLS sur la table evaluations
-ALTER TABLE evaluations ENABLE ROW LEVEL SECURITY;
+-- ⚠️ D'ABORD, supprimer les anciennes policies
+DROP POLICY IF EXISTS "enseignants_insert_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "enseignants_select_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "enseignants_update_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "parents_select_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "admin_select_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "admin_insert_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "admin_update_evaluations" ON evaluations;
+DROP POLICY IF EXISTS "admin_delete_evaluations" ON evaluations;
 
 -- ============================================
 -- ENSEIGNANTS : Peuvent insérer et voir leurs évaluations
 -- ============================================
 
--- Politique INSERT : l'enseignant peut insérer une évaluation
 CREATE POLICY "enseignants_insert_evaluations" ON evaluations
   FOR INSERT WITH CHECK (
     auth.uid() IN (
@@ -18,7 +24,6 @@ CREATE POLICY "enseignants_insert_evaluations" ON evaluations
     )
   );
 
--- Politique SELECT : l'enseignant voit ses propres évaluations
 CREATE POLICY "enseignants_select_evaluations" ON evaluations
   FOR SELECT USING (
     auth.uid() IN (
@@ -26,7 +31,6 @@ CREATE POLICY "enseignants_select_evaluations" ON evaluations
     )
   );
 
--- Politique UPDATE : l'enseignant peut modifier ses évaluations
 CREATE POLICY "enseignants_update_evaluations" ON evaluations
   FOR UPDATE USING (
     auth.uid() IN (
@@ -42,14 +46,18 @@ CREATE POLICY "enseignants_update_evaluations" ON evaluations
 -- PARENTS : Peuvent voir les évaluations de leurs enfants
 -- ============================================
 
--- Politique SELECT : les parents voient les évaluations de leurs enfants
+-- Politique PERMISSIVE : les parents voient les évaluations
 CREATE POLICY "parents_select_evaluations" ON evaluations
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT p.profile_id
-      FROM parents p
-      INNER JOIN parents_eleves pe ON p.id = pe.parent_id
-      WHERE pe.eleve_id = evaluations.eleve_id
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM parents p
+      WHERE p.profile_id = auth.uid()
+      AND EXISTS (
+        SELECT 1 FROM parents_eleves pe
+        WHERE pe.parent_id = p.id
+        AND pe.eleve_id = evaluations.eleve_id
+      )
     )
   );
 
@@ -57,42 +65,19 @@ CREATE POLICY "parents_select_evaluations" ON evaluations
 -- ADMIN : Accès complet
 -- ============================================
 
--- Politique SELECT : les admins voient tout
-CREATE POLICY "admin_select_evaluations" ON evaluations
-  FOR SELECT USING (
+CREATE POLICY "admin_all_evaluations" ON evaluations
+  FOR ALL
+  USING (
     auth.uid() IN (
       SELECT id FROM profiles WHERE role = 'admin'
     )
-  );
-
--- Politique INSERT : les admins peuvent insérer
-CREATE POLICY "admin_insert_evaluations" ON evaluations
-  FOR INSERT WITH CHECK (
-    auth.uid() IN (
-      SELECT id FROM profiles WHERE role = 'admin'
-    )
-  );
-
--- Politique UPDATE : les admins peuvent modifier
-CREATE POLICY "admin_update_evaluations" ON evaluations
-  FOR UPDATE USING (
-    auth.uid() IN (
-      SELECT id FROM profiles WHERE role = 'admin'
-    )
-  ) WITH CHECK (
-    auth.uid() IN (
-      SELECT id FROM profiles WHERE role = 'admin'
-    )
-  );
-
--- Politique DELETE : les admins peuvent supprimer
-CREATE POLICY "admin_delete_evaluations" ON evaluations
-  FOR DELETE USING (
+  )
+  WITH CHECK (
     auth.uid() IN (
       SELECT id FROM profiles WHERE role = 'admin'
     )
   );
 
 -- ============================================
--- FIN: 11_policies_evaluations.sql
+-- FIN: 11_policies_evaluations_FIXED.sql
 -- ============================================
