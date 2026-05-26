@@ -11,15 +11,15 @@ export default function AdminStudents() {
   const [parents, setParents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'students' | 'parents'>('students');
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState<'student' | 'parent' | 'associate'>('student');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [studentForm, setStudentForm] = useState({
     nom: '',
     prenom: '',
-    classe_id: '',
+    classe_id: 0,
   });
 
   const [parentForm, setParentForm] = useState({
@@ -27,20 +27,12 @@ export default function AdminStudents() {
     prenom: '',
     email: '',
     password: '',
-  });
-
-  const [associateForm, setAssociateForm] = useState({
-    student_id: '',
-    parent_id: '',
-    lien_parental: 'mère',
+    eleves: [] as number[],
   });
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login/admin');
         return;
@@ -57,35 +49,23 @@ export default function AdminStudents() {
         return;
       }
 
-      // Récupérer les élèves
       const { data: studentsData } = await supabase
         .from('eleves')
-        .select('*, classes(nom_classe, niveau)')
+        .select('*')
         .order('nom');
+      if (studentsData) setStudents(studentsData);
 
-      if (studentsData) {
-        setStudents(studentsData);
-      }
-
-      // Récupérer les parents
       const { data: parentsData } = await supabase
         .from('parents')
         .select('*')
         .order('nom');
+      if (parentsData) setParents(parentsData);
 
-      if (parentsData) {
-        setParents(parentsData);
-      }
-
-      // Récupérer les classes
       const { data: classesData } = await supabase
         .from('classes')
         .select('*')
         .order('nom_classe');
-
-      if (classesData) {
-        setClasses(classesData);
-      }
+      if (classesData) setClasses(classesData);
 
       setLoading(false);
     };
@@ -93,33 +73,18 @@ export default function AdminStudents() {
     checkAuth();
   }, [router]);
 
-  const handleStudentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleStudentInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setStudentForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'classe_id' ? parseInt(value) : value,
     }));
   };
 
-  const handleParentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setParentForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleAssociateChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setAssociateForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleAddStudent = async (e: React.FormEvent) => {
+  const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setMessage('');
 
     try {
       const { data, error } = await supabase
@@ -128,116 +93,147 @@ export default function AdminStudents() {
           {
             nom: studentForm.nom,
             prenom: studentForm.prenom,
-            classe_id: parseInt(studentForm.classe_id),
-          },
-        ])
-        .select('*, classes(nom_classe, niveau)');
-
-      if (error) {
-        setMessage('Erreur lors de la création');
-      } else {
-        setMessage('Élève créé avec succès');
-        if (data) {
-          setStudents([...students, data[0]]);
-        }
-        setStudentForm({ nom: '', prenom: '', classe_id: '' });
-      }
-    } catch (error) {
-      setMessage('Erreur lors de l\'opération');
-    }
-
-    setSaving(false);
-  };
-
-  const handleAddParent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: parentForm.email,
-        password: parentForm.password,
-        options: {
-          data: {
-            nom: parentForm.nom,
-            prenom: parentForm.prenom,
-            role: 'parent',
-          },
-        },
-      });
-
-      if (authError || !authData.user) {
-        setMessage('Erreur lors de la création du compte');
-        setSaving(false);
-        return;
-      }
-
-      await supabase.from('profiles').insert([
-        {
-          id: authData.user.id,
-          nom: parentForm.nom,
-          prenom: parentForm.prenom,
-          role: 'parent',
-        },
-      ]);
-
-      const { data, error } = await supabase
-        .from('parents')
-        .insert([
-          {
-            profile_id: authData.user.id,
-            nom: parentForm.nom,
-            prenom: parentForm.prenom,
+            classe_id: studentForm.classe_id,
           },
         ])
         .select();
 
       if (error) {
-        setMessage('Erreur lors de la création du parent');
-      } else {
-        setMessage('Parent créé avec succès');
-        if (data) {
-          setParents([...parents, data[0]]);
-        }
-        setParentForm({ nom: '', prenom: '', email: '', password: '' });
+        setMessage('❌ Erreur: ' + error.message);
+        setSaving(false);
+        return;
       }
+
+      setMessage('✅ Élève créé avec succès');
+      setStudentForm({ nom: '', prenom: '', classe_id: 0 });
+      setShowForm(false);
+
+      const { data: updatedStudents } = await supabase
+        .from('eleves')
+        .select('*')
+        .order('nom');
+      if (updatedStudents) setStudents(updatedStudents);
     } catch (error) {
-      setMessage('Erreur lors de l\'opération');
+      setMessage('❌ Erreur lors de l\'opération');
     }
 
     setSaving(false);
   };
 
-  const handleAssociate = async (e: React.FormEvent) => {
+  const handleDeleteStudent = async (studentId: number) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) {
+      try {
+        await supabase.from('parents_eleves').delete().eq('eleve_id', studentId);
+        await supabase.from('eleves').delete().eq('id', studentId);
+
+        setStudents(students.filter((s) => s.id !== studentId));
+        setMessage('Élève supprimé avec succès');
+      } catch (error) {
+        setMessage('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  const handleParentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setParentForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleEleveToggle = (eleveId: number) => {
+    setParentForm((prev) => ({
+      ...prev,
+      eleves: prev.eleves.includes(eleveId)
+        ? prev.eleves.filter((e) => e !== eleveId)
+        : [...prev.eleves, eleveId],
+    }));
+  };
+
+  const handleSaveParent = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setMessage('');
 
     try {
-      const { error } = await supabase.from('parents_eleves').insert([
-        {
-          parent_id: parseInt(associateForm.parent_id),
-          eleve_id: parseInt(associateForm.student_id),
-          lien_parental: associateForm.lien_parental,
-        },
-      ]);
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: parentForm.email,
+          password: parentForm.password,
+          nom: parentForm.nom,
+          prenom: parentForm.prenom,
+          role: 'parent',
+        }),
+      });
 
-      if (error) {
-        setMessage('Erreur lors de l\'association');
-      } else {
-        setMessage('Parent associé avec succès');
-        setAssociateForm({ student_id: '', parent_id: '', lien_parental: 'mère' });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setMessage('❌ Erreur: ' + (result.error || 'Impossible de créer l\'utilisateur'));
+        setSaving(false);
+        return;
       }
+
+      const userId = result.user_id;
+
+      await supabase.from('profiles').insert([{
+        id: userId,
+        nom: parentForm.nom,
+        prenom: parentForm.prenom,
+        role: 'parent',
+      }]);
+
+      const { data: parentData } = await supabase
+        .from('parents')
+        .insert([{
+          user_id: userId,
+          nom: parentForm.nom,
+          prenom: parentForm.prenom,
+        }])
+        .select();
+
+      if (parentData && parentData[0] && parentForm.eleves.length > 0) {
+        await supabase.from('parents_eleves').insert(
+          parentForm.eleves.map((eleveId) => ({
+            parent_id: parentData[0].id,
+            eleve_id: eleveId,
+            lien_parental: 'Parent',
+          }))
+        );
+      }
+
+      setMessage('✅ Parent créé avec succès');
+      setParentForm({ nom: '', prenom: '', email: '', password: '', eleves: [] });
+      setShowForm(false);
+
+      const { data: updatedParents } = await supabase
+        .from('parents')
+        .select('*')
+        .order('nom');
+      if (updatedParents) setParents(updatedParents);
     } catch (error) {
-      setMessage('Erreur lors de l\'opération');
+      console.error(error);
+      setMessage('❌ Erreur lors de l\'opération');
     }
 
     setSaving(false);
   };
 
-  const handleDeleteStudent = async (id: number) => {
-    if (confirm('Êtes-vous sûr ?')) {
-      await supabase.from('eleves').delete().eq('id', id);
-      setStudents(students.filter((s) => s.id !== id));
+  const handleDeleteParent = async (parentId: number, userId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce parent ?')) {
+      try {
+        await supabase.from('parents_eleves').delete().eq('parent_id', parentId);
+        await supabase.from('parents').delete().eq('id', parentId);
+        await supabase.auth.admin.deleteUser(userId);
+
+        setParents(parents.filter((p) => p.id !== parentId));
+        setMessage('Parent supprimé avec succès');
+      } catch (error) {
+        setMessage('Erreur lors de la suppression');
+      }
     }
   };
 
@@ -263,98 +259,217 @@ export default function AdminStudents() {
       </header>
 
       <main className={styles.main}>
-        {!showForm ? (
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
+          <button
+            onClick={() => {
+              setActiveTab('students');
+              setShowForm(false);
+            }}
+            style={{
+              backgroundColor: activeTab === 'students' ? 'var(--color-primary)' : '#ddd',
+              color: activeTab === 'students' ? 'white' : 'black',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Élèves
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('parents');
+              setShowForm(false);
+            }}
+            style={{
+              backgroundColor: activeTab === 'parents' ? 'var(--color-primary)' : '#ddd',
+              color: activeTab === 'parents' ? 'white' : 'black',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Parents
+          </button>
+        </div>
+
+        {activeTab === 'students' && (
           <>
-            <section className={styles.infoSection}>
-              <div style={{ marginBottom: '20px' }}>
-                <h2>Élèves ({students.length})</h2>
-                <button
-                  onClick={() => {
-                    setFormMode('student');
-                    setShowForm(true);
-                  }}
-                  style={{
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    marginBottom: '15px',
-                  }}
-                >
-                  + Ajouter un élève
-                </button>
+            {!showForm ? (
+              <section className={styles.infoSection}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2>Élèves ({students.length})</h2>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    style={{
+                      backgroundColor: 'var(--color-primary)',
+                      color: 'white',
+                      padding: '10px 20px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Ajouter un élève
+                  </button>
+                </div>
 
                 {students.length > 0 ? (
-                  <div style={{ overflow: 'x' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                          <th style={{ textAlign: 'left', padding: '12px' }}>Nom</th>
-                          <th style={{ textAlign: 'left', padding: '12px' }}>Classe</th>
-                          <th style={{ textAlign: 'center', padding: '12px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student) => (
-                          <tr
-                            key={student.id}
-                            style={{ borderBottom: '1px solid var(--color-border)' }}
-                          >
-                            <td style={{ padding: '12px' }}>
-                              {student.prenom} {student.nom}
-                            </td>
-                            <td style={{ padding: '12px' }}>
-                              {student.classes?.nom_classe}
-                            </td>
-                            <td style={{ textAlign: 'center', padding: '12px' }}>
-                              <button
-                                onClick={() => handleDeleteStudent(student.id)}
-                                style={{
-                                  backgroundColor: 'var(--color-tertiary)',
-                                  color: 'white',
-                                  padding: '5px 10px',
-                                  borderRadius: '4px',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.85rem',
-                                }}
-                              >
-                                Supprimer
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div>
+                    {students.map((student) => (
+                      <div
+                        key={student.id}
+                        style={{
+                          background: '#f8f9fa',
+                          padding: '15px',
+                          marginBottom: '15px',
+                          borderRadius: '8px',
+                          borderLeft: '4px solid var(--color-primary)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div>
+                          <h4 style={{ margin: '0 0 5px 0' }}>
+                            {student.prenom} {student.nom}
+                          </h4>
+                          <p style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>
+                            Classe: {classes.find((c) => c.id === student.classe_id)?.nom_classe || 'N/A'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteStudent(student.id)}
+                          style={{
+                            backgroundColor: 'var(--color-tertiary)',
+                            color: 'white',
+                            padding: '8px 15px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <p style={{ color: '#999' }}>Aucun élève</p>
+                  <p style={{ textAlign: 'center', color: '#999' }}>Aucun élève créé</p>
                 )}
-              </div>
-            </section>
+              </section>
+            ) : (
+              <section className={styles.form} style={{ maxWidth: '600px' }}>
+                <h2>Ajouter un élève</h2>
 
-            <section className={styles.infoSection}>
-              <div style={{ marginBottom: '20px' }}>
-                <h2>Parents ({parents.length})</h2>
-                <button
-                  onClick={() => {
-                    setFormMode('parent');
-                    setShowForm(true);
-                  }}
-                  style={{
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    marginBottom: '15px',
-                  }}
-                >
-                  + Ajouter un parent
-                </button>
+                <form onSubmit={handleSaveStudent}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="prenom">Prénom *</label>
+                    <input
+                      id="prenom"
+                      name="prenom"
+                      type="text"
+                      value={studentForm.prenom}
+                      onChange={handleStudentInputChange}
+                      placeholder="Marie"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="nom">Nom *</label>
+                    <input
+                      id="nom"
+                      name="nom"
+                      type="text"
+                      value={studentForm.nom}
+                      onChange={handleStudentInputChange}
+                      placeholder="Dupont"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="classe_id">Classe *</label>
+                    <select
+                      id="classe_id"
+                      name="classe_id"
+                      value={studentForm.classe_id}
+                      onChange={handleStudentInputChange}
+                      required
+                    >
+                      <option value={0}>Sélectionner une classe</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom_classe} ({c.niveau})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {message && (
+                    <div
+                      className={message.includes('✅') ? styles.successMessage : styles.errorMessage}
+                    >
+                      {message}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className={styles.submitButton}
+                      style={{ flex: 1 }}
+                    >
+                      {saving ? 'Création...' : 'Créer l\'élève'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForm(false);
+                        setMessage('');
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        padding: '12px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
+          </>
+        )}
+
+        {activeTab === 'parents' && (
+          <>
+            {!showForm ? (
+              <section className={styles.infoSection}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2>Parents ({parents.length})</h2>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    style={{
+                      backgroundColor: 'var(--color-primary)',
+                      color: 'white',
+                      padding: '10px 20px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Ajouter un parent
+                  </button>
+                </div>
 
                 {parents.length > 0 ? (
                   <div>
@@ -363,237 +478,158 @@ export default function AdminStudents() {
                         key={parent.id}
                         style={{
                           background: '#f8f9fa',
-                          padding: '12px',
-                          marginBottom: '10px',
-                          borderRadius: '6px',
+                          padding: '15px',
+                          marginBottom: '15px',
+                          borderRadius: '8px',
                           borderLeft: '4px solid var(--color-primary)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                         }}
                       >
-                        {parent.prenom} {parent.nom}
+                        <div>
+                          <h4 style={{ margin: '0 0 5px 0' }}>
+                            {parent.prenom} {parent.nom}
+                          </h4>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteParent(parent.id, parent.user_id)}
+                          style={{
+                            backgroundColor: 'var(--color-tertiary)',
+                            color: 'white',
+                            padding: '8px 15px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Supprimer
+                        </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p style={{ color: '#999' }}>Aucun parent</p>
+                  <p style={{ textAlign: 'center', color: '#999' }}>Aucun parent créé</p>
                 )}
-              </div>
-            </section>
-
-            <section className={styles.infoSection}>
-              <h2>Associer parent & élève</h2>
-              <button
-                onClick={() => {
-                  setFormMode('associate');
-                  setShowForm(true);
-                }}
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  color: 'white',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Créer une association
-              </button>
-            </section>
-          </>
-        ) : (
-          <section className={styles.form} style={{ maxWidth: '600px' }}>
-            {formMode === 'student' && (
-              <form onSubmit={handleAddStudent}>
-                <h2>Ajouter un élève</h2>
-                <div className={styles.formGroup}>
-                  <label>Prénom *</label>
-                  <input
-                    type="text"
-                    value={studentForm.prenom}
-                    onChange={(e) => setStudentForm({ ...studentForm, prenom: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Nom *</label>
-                  <input
-                    type="text"
-                    value={studentForm.nom}
-                    onChange={(e) => setStudentForm({ ...studentForm, nom: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Classe *</label>
-                  <select
-                    value={studentForm.classe_id}
-                    onChange={(e) => setStudentForm({ ...studentForm, classe_id: e.target.value })}
-                    required
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom_classe}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {message && <div className={styles.successMessage}>{message}</div>}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="submit" disabled={saving} className={styles.submitButton} style={{ flex: 1 }}>
-                    {saving ? 'Création...' : 'Ajouter l\'élève'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      padding: '12px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Retour
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {formMode === 'parent' && (
-              <form onSubmit={handleAddParent}>
+              </section>
+            ) : (
+              <section className={styles.form} style={{ maxWidth: '600px' }}>
                 <h2>Ajouter un parent</h2>
-                <div className={styles.formGroup}>
-                  <label>Prénom *</label>
-                  <input
-                    type="text"
-                    value={parentForm.prenom}
-                    onChange={(e) => setParentForm({ ...parentForm, prenom: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Nom *</label>
-                  <input
-                    type="text"
-                    value={parentForm.nom}
-                    onChange={(e) => setParentForm({ ...parentForm, nom: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Email *</label>
-                  <input
-                    type="email"
-                    value={parentForm.email}
-                    onChange={(e) => setParentForm({ ...parentForm, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Mot de passe *</label>
-                  <input
-                    type="password"
-                    value={parentForm.password}
-                    onChange={(e) => setParentForm({ ...parentForm, password: e.target.value })}
-                    required
-                    minLength={8}
-                  />
-                </div>
-                {message && <div className={styles.successMessage}>{message}</div>}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="submit" disabled={saving} className={styles.submitButton} style={{ flex: 1 }}>
-                    {saving ? 'Création...' : 'Ajouter le parent'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      padding: '12px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Retour
-                  </button>
-                </div>
-              </form>
-            )}
 
-            {formMode === 'associate' && (
-              <form onSubmit={handleAssociate}>
-                <h2>Associer parent & élève</h2>
-                <div className={styles.formGroup}>
-                  <label>Élève *</label>
-                  <select
-                    value={associateForm.student_id}
-                    onChange={(e) => setAssociateForm({ ...associateForm, student_id: e.target.value })}
-                    required
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {students.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.prenom} {s.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Parent *</label>
-                  <select
-                    value={associateForm.parent_id}
-                    onChange={(e) => setAssociateForm({ ...associateForm, parent_id: e.target.value })}
-                    required
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {parents.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.prenom} {p.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Lien parental *</label>
-                  <select
-                    value={associateForm.lien_parental}
-                    onChange={(e) => setAssociateForm({ ...associateForm, lien_parental: e.target.value })}
-                  >
-                    <option value="mère">Mère</option>
-                    <option value="père">Père</option>
-                    <option value="responsable légal">Responsable légal</option>
-                    <option value="autre">Autre</option>
-                  </select>
-                </div>
-                {message && <div className={styles.successMessage}>{message}</div>}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="submit" disabled={saving} className={styles.submitButton} style={{ flex: 1 }}>
-                    {saving ? 'Association...' : 'Associer'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      padding: '12px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Retour
-                  </button>
-                </div>
-              </form>
+                <form onSubmit={handleSaveParent}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="parent_prenom">Prénom *</label>
+                    <input
+                      id="parent_prenom"
+                      name="prenom"
+                      type="text"
+                      value={parentForm.prenom}
+                      onChange={handleParentInputChange}
+                      placeholder="Jean"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="parent_nom">Nom *</label>
+                    <input
+                      id="parent_nom"
+                      name="nom"
+                      type="text"
+                      value={parentForm.nom}
+                      onChange={handleParentInputChange}
+                      placeholder="Dupont"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="parent_email">Email *</label>
+                    <input
+                      id="parent_email"
+                      name="email"
+                      type="email"
+                      value={parentForm.email}
+                      onChange={handleParentInputChange}
+                      placeholder="jean.dupont@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="parent_password">Mot de passe *</label>
+                    <input
+                      id="parent_password"
+                      name="password"
+                      type="password"
+                      value={parentForm.password}
+                      onChange={handleParentInputChange}
+                      placeholder="Mot de passe sécurisé"
+                      required
+                      minLength={8}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Élèves associés</label>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {students.length > 0 ? (
+                        students.map((student) => (
+                          <label key={student.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={parentForm.eleves.includes(student.id)}
+                              onChange={() => handleEleveToggle(student.id)}
+                            />
+                            {student.prenom} {student.nom}
+                          </label>
+                        ))
+                      ) : (
+                        <p style={{ color: '#999' }}>Aucun élève disponible</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {message && (
+                    <div
+                      className={message.includes('✅') ? styles.successMessage : styles.errorMessage}
+                    >
+                      {message}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className={styles.submitButton}
+                      style={{ flex: 1 }}
+                    >
+                      {saving ? 'Création...' : 'Créer le parent'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForm(false);
+                        setMessage('');
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        padding: '12px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </section>
             )}
-          </section>
+          </>
         )}
       </main>
     </div>
