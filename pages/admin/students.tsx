@@ -189,7 +189,7 @@ export default function AdminStudents() {
       const { data: parentData, error: parentError } = await supabase
         .from('parents')
         .insert([{
-          user_id: userId,
+          profile_id: userId,
           nom: parentForm.nom,
           prenom: parentForm.prenom,
         }])
@@ -240,12 +240,12 @@ export default function AdminStudents() {
     setSaving(false);
   };
 
-  const handleDeleteParent = async (parentId: number, userId: string) => {
+  const handleDeleteParent = async (parentId: number, profileId: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce parent ?')) {
       try {
         await supabase.from('parents_eleves').delete().eq('parent_id', parentId);
         await supabase.from('parents').delete().eq('id', parentId);
-        await supabase.auth.admin.deleteUser(userId);
+        await supabase.auth.admin.deleteUser(profileId);
 
         setParents(parents.filter((p) => p.id !== parentId));
         setMessage('Parent supprimé avec succès');
@@ -511,7 +511,7 @@ export default function AdminStudents() {
                           </h4>
                         </div>
                         <button
-                          onClick={() => handleDeleteParent(parent.id, parent.user_id)}
+                          onClick={() => handleDeleteParent(parent.id, parent.profile_id)}
                           style={{
                             backgroundColor: 'var(--color-tertiary)',
                             color: 'white',
