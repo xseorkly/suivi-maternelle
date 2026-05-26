@@ -57,7 +57,7 @@ export default function ParentEvaluation() {
 
       setUser(profile);
 
-      // Charger les enfants du parent
+      // ✅ Charger les enfants du parent
       const { data: parentData } = await supabase
         .from('parents')
         .select('id')
@@ -67,7 +67,7 @@ export default function ParentEvaluation() {
       if (parentData) {
         const { data: childrenData } = await supabase
           .from('parents_eleves')
-          .select('eleve_id, eleves(*)')
+          .select('eleve_id, eleves(id, nom, prenom, classe_id)')
           .eq('parent_id', parentData.id);
 
         if (childrenData) {
@@ -85,13 +85,26 @@ export default function ParentEvaluation() {
     setSelectedChild(childId);
     setSelectedEvaluation(null);
 
-    const { data: evalData } = await supabase
+    console.log('Loading evaluations for child:', childId);
+
+    // ✅ Charger les évaluations de CET enfant
+    const { data: evalData, error } = await supabase
       .from('evaluations')
       .select('*')
       .eq('eleve_id', childId)
       .order('date_evaluation', { ascending: false });
 
-    if (evalData) setEvaluations(evalData);
+    if (error) {
+      console.error('Error loading evaluations:', error);
+    }
+
+    if (evalData) {
+      console.log('Evaluations found:', evalData);
+      setEvaluations(evalData);
+    } else {
+      console.log('No evaluations found');
+      setEvaluations([]);
+    }
   };
 
   const handleSelectEvaluation = (eval_: any) => {
