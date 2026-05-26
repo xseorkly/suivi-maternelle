@@ -36,10 +36,13 @@ export default function ParentEvaluation() {
   const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'enfant' | 'parent'>('enfant');
 
+  // ✅ USEEFFECT 1 : Charger les données du parent et ses enfants
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('🔐 Vérification de l\'authentification...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.log('❌ Pas d\'utilisateur, redirection vers login');
         router.push('/login/parent');
         return;
       }
@@ -51,13 +54,15 @@ export default function ParentEvaluation() {
         .single();
 
       if (!profile || profile.role !== 'parent') {
+        console.log('❌ Pas un parent, redirection');
         router.push('/');
         return;
       }
 
+      console.log('✅ Parent authentifié:', profile);
       setUser(profile);
 
-      // ✅ Charger les enfants du parent
+      // Charger les enfants
       const { data: parentData } = await supabase
         .from('parents')
         .select('id')
@@ -70,8 +75,12 @@ export default function ParentEvaluation() {
           .select('eleve_id, eleves(id, nom, prenom, classe_id)')
           .eq('parent_id', parentData.id);
 
-        if (childrenData) {
-          setChildren(childrenData.map(pe => pe.eleves));
+        if (childrenData && childrenData.length > 0) {
+          const childList = childrenData.map(pe => pe.eleves).filter(e => e);
+          console.log('✅ Enfants chargés:', childList);
+          setChildren(childList);
+          // ✅ Sélectionner automatiquement le premier enfant
+          setSelectedChild(childList[0].id);
         }
       }
 
@@ -81,33 +90,41 @@ export default function ParentEvaluation() {
     checkAuth();
   }, [router]);
 
-  const handleChildChange = async (childId: number) => {
-    setSelectedChild(childId);
-    setSelectedEvaluation(null);
+  // ✅ USEEFFECT 2 : Charger les évaluations quand l'enfant change
+  useEffect(() => {
+    if (selectedChild === 0) return; // Ne rien faire si pas d'enfant sélectionné
 
-    console.log('Loading evaluations for child:', childId);
+    const loadEvaluations = async () => {
+      console.log('📊 Chargement des évaluations pour l\'enfant:', selectedChild);
+      
+      const { data: evalData, error } = await supabase
+        .from('evaluations')
+        .select('*')
+        .eq('eleve_id', selectedChild)
+        .order('date_evaluation', { ascending: false });
 
-    // ✅ Charger les évaluations de CET enfant
-    const { data: evalData, error } = await supabase
-      .from('evaluations')
-      .select('*')
-      .eq('eleve_id', childId)
-      .order('date_evaluation', { ascending: false });
+      if (error) {
+        console.error('❌ Erreur lors du chargement:', error);
+        setEvaluations([]);
+        return;
+      }
 
-    if (error) {
-      console.error('Error loading evaluations:', error);
-    }
+      if (evalData && evalData.length > 0) {
+        console.log('✅ Évaluations trouvées:', evalData);
+        setEvaluations(evalData);
+      } else {
+        console.log('⚠️ Aucune évaluation trouvée');
+        setEvaluations([]);
+      }
 
-    if (evalData) {
-      console.log('Evaluations found:', evalData);
-      setEvaluations(evalData);
-    } else {
-      console.log('No evaluations found');
-      setEvaluations([]);
-    }
-  };
+      setSelectedEvaluation(null);
+    };
+
+    loadEvaluations();
+  }, [selectedChild]); // Se déclenche quand selectedChild change
 
   const handleSelectEvaluation = (eval_: any) => {
+    console.log('📌 Évaluation sélectionnée:', eval_);
     setSelectedEvaluation(eval_);
   };
 
@@ -140,7 +157,11 @@ export default function ParentEvaluation() {
           </label>
           <select
             value={selectedChild}
-            onChange={(e) => handleChildChange(parseInt(e.target.value))}
+            onChange={(e) => {
+              const newChildId = parseInt(e.target.value);
+              console.log('🔄 Changement d\'enfant:', newChildId);
+              setSelectedChild(newChildId);
+            }}
             style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
           >
             <option value={0}>-- Sélectionner --</option>
