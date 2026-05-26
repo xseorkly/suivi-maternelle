@@ -84,7 +84,7 @@ export default function AdminImport() {
               password: row['Mot de passe enseignant'],
               nom: row['Nom de l\'enseignant'].trim(),
               prenom: row['Prénom de l\'enseignant'].trim(),
-              role: 'teacher',
+              role: 'enseignant',
             }),
           });
 
