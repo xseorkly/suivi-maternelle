@@ -245,7 +245,7 @@ export default function ParentDashboard() {
                                 <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
                                   {niveauInfo.symbols}
                                 </div>
-                                <p style={{ margin: '10px 0', fontWeight: 'bold', color: niveauInfo.color }}>
+                                <p style={{ margin: '10px 0', fontWeight: 'bold', color: niveauInfo.color, fontSize: '0.9rem' }}>
                                   {niveauInfo.messageEnfant}
                                 </p>
                               </>
@@ -281,6 +281,19 @@ export default function ParentDashboard() {
                         })}
                       </tbody>
                     </table>
+                  )}
+
+                  {selectedEval.commentaire_enseignant && (
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '15px',
+                      backgroundColor: '#e8f5e9',
+                      borderLeft: '4px solid #4CAF50',
+                      borderRadius: '6px',
+                    }}>
+                      <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>💭 Note de l\'enseignant :</p>
+                      <p style={{ margin: 0, lineHeight: '1.6' }}>{selectedEval.commentaire_enseignant}</p>
+                    </div>
                   )}
                 </div>
               </>
