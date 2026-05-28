@@ -99,7 +99,7 @@ export default function ParentDashboard() {
         .from('commentaires')
         .select('*')
         .eq('eleve_id', selectedChild)
-        .order('date_creation', { ascending: false });
+        .order('date_commentaire', { ascending: false });
 
       if (evalData && evalData.length > 0) {
         setEvaluations(evalData);
@@ -322,10 +322,10 @@ export default function ParentDashboard() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <p style={{ fontWeight: 'bold', margin: 0 }}>✍️ Enseignant</p>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                          📅 {new Date(comment.date_creation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          📅 {new Date(comment.date_commentaire).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                       </div>
-                      <p style={{ margin: 0, lineHeight: '1.6' }}>{comment.contenu}</p>
+                      <p style={{ margin: 0, lineHeight: '1.6' }}>{comment.texte_commentaire}</p>
                     </div>
                   ))}
                 </div>
