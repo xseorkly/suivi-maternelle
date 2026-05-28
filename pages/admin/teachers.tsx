@@ -22,6 +22,10 @@ export default function AdminTeachers() {
   const [passwordForm, setPasswordForm] = useState({ teacherId: 0, newPassword: '' });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
+  // États pour créer nouveau
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState({ nom: '', prenom: '', email: '', password: '', classe_id: 0 });
+
   // Charger les données
   useEffect(() => {
     const checkAuth = async () => {
@@ -177,6 +181,73 @@ export default function AdminTeachers() {
     }
   };
 
+  const handleAddTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: addForm.email,
+          password: addForm.password,
+          nom: addForm.nom,
+          prenom: addForm.prenom,
+          role: 'enseignant',
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setMessage('❌ Erreur: ' + (result.error || 'Impossible de créer l\'utilisateur'));
+        setSaving(false);
+        return;
+      }
+
+      const userId = result.user_id;
+
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('enseignants')
+        .insert([{
+          profile_id: userId,
+          nom: addForm.nom,
+          prenom: addForm.prenom,
+        }])
+        .select();
+
+      if (teacherError) {
+        setMessage('❌ Erreur création enseignant: ' + teacherError.message);
+        setSaving(false);
+        return;
+      }
+
+      if (addForm.classe_id > 0 && teacherData && teacherData[0]) {
+        await supabase
+          .from('enseignants_classes')
+          .insert({
+            enseignant_id: teacherData[0].id,
+            classe_id: addForm.classe_id,
+          });
+      }
+
+      setMessage('✅ Enseignant créé');
+      setAddForm({ nom: '', prenom: '', email: '', password: '', classe_id: 0 });
+      setShowAddForm(false);
+
+      const { data: updatedTeachers } = await supabase.from('enseignants').select('*').order('nom');
+      if (updatedTeachers) setTeachers(updatedTeachers);
+
+      const { data: relationsData } = await supabase.from('enseignants_classes').select('*');
+      if (relationsData) setTeacherClasses(relationsData);
+    } catch (error) {
+      setMessage('❌ Erreur');
+    }
+    setSaving(false);
+  };
+
   const handleLogout = async () => {
     await signOut();
     router.push('/');
@@ -202,18 +273,110 @@ export default function AdminTeachers() {
         <section className={styles.infoSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2>Enseignants ({teachers.length})</h2>
-          </div>
-
-          {message && (
-            <div
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
               style={{
-                marginBottom: '20px',
-                padding: '12px',
+                backgroundColor: 'var(--color-primary)',
+                color: 'white',
+                padding: '10px 20px',
                 borderRadius: '6px',
-                backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da',
-                color: message.includes('✅') ? '#155724' : '#721c24',
+                border: 'none',
+                cursor: 'pointer',
               }}
             >
+              {showAddForm ? '✕ Annuler' : '+ Ajouter un enseignant'}
+            </button>
+          </div>
+
+          {showAddForm && (
+            <div style={{ background: '#f0f0f0', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+              <h3>Ajouter un enseignant</h3>
+              <form onSubmit={handleAddTeacher}>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Prénom:</label>
+                  <input
+                    type="text"
+                    value={addForm.prenom}
+                    onChange={(e) => setAddForm({ ...addForm, prenom: e.target.value })}
+                    placeholder="Prénom"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Nom:</label>
+                  <input
+                    type="text"
+                    value={addForm.nom}
+                    onChange={(e) => setAddForm({ ...addForm, nom: e.target.value })}
+                    placeholder="Nom"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Email:</label>
+                  <input
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    placeholder="Email"
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Mot de passe:</label>
+                  <input
+                    type="password"
+                    value={addForm.password}
+                    onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                    placeholder="Mot de passe"
+                    required
+                    minLength={6}
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Classe affectée:</label>
+                  <select
+                    value={addForm.classe_id}
+                    onChange={(e) => setAddForm({ ...addForm, classe_id: parseInt(e.target.value) })}
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+                  >
+                    <option value={0}>-- Aucune classe --</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.nom_classe}</option>
+                    ))}
+                  </select>
+                </div>
+                {message && (
+                  <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da', borderRadius: '4px', color: message.includes('✅') ? '#155724' : '#721c24' }}>
+                    {message}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    style={{ flex: 1, backgroundColor: '#28a745', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    {saving ? 'Création...' : '✓ Créer'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    style={{ flex: 1, backgroundColor: '#6c757d', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    ✕ Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {message && !showAddForm && (
+            <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '6px', backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da', color: message.includes('✅') ? '#155724' : '#721c24' }}>
               {message}
             </div>
           )}
@@ -232,7 +395,6 @@ export default function AdminTeachers() {
                   }}
                 >
                   {editingTeacher === teacher.id ? (
-                    // Mode édition
                     <div>
                       <div style={{ marginBottom: '10px' }}>
                         <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Nom:</label>
@@ -284,7 +446,6 @@ export default function AdminTeachers() {
                       </div>
                     </div>
                   ) : (
-                    // Mode affichage
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                         <div>
