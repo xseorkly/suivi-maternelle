@@ -19,11 +19,11 @@ const COMPETENCES = [
 ];
 
 const NIVEAUX: any = {
-  5: { symbols: '☀️☀️☀️', label: 'Excellent !', color: '#4CAF50', messageParent: 'Compétence maîtrisée' },
-  4: { symbols: '☀️☀️', label: 'Bien !', color: '#8BC34A', messageParent: 'En voie d\'acquisition' },
-  3: { symbols: '☁️', label: 'Moyen', color: '#FFC107', messageParent: 'À travailler. En cours d\'apprentissage.' },
-  2: { symbols: '☁️⛈️', label: 'Difficultés', color: '#FF9800', messageParent: 'Difficultés. Soutien recommandé à la maison.' },
-  1: { symbols: '⛈️', label: 'Très difficile', color: '#F44336', messageParent: 'Action requise. Contact avec l\'enseignant.' },
+  5: { symbols: '☀️☀️☀️', label: 'Excellent !', color: '#4CAF50', messageEnfant: '🎉 Bravo ! Tu es une super star !', messageParent: 'Compétence maîtrisée' },
+  4: { symbols: '☀️☀️', label: 'Bien !', color: '#8BC34A', messageEnfant: '👍 Bien joué ! Tu progresses !', messageParent: 'En voie d\'acquisition' },
+  3: { symbols: '☁️', label: 'Moyen', color: '#FFC107', messageEnfant: '☁️ C\'est normal ! On va continuer ensemble', messageParent: 'À travailler. En cours d\'apprentissage.' },
+  2: { symbols: '☁️⛈️', label: 'Difficultés', color: '#FF9800', messageEnfant: '💪 C\'est difficile, mais ne t\'inquiète pas, on va t\'aider !', messageParent: 'Difficultés. Soutien recommandé à la maison.' },
+  1: { symbols: '⛈️', label: 'Très difficile', color: '#F44336', messageEnfant: '🤝 Besoin d\'aide spéciale, on travaille ensemble', messageParent: 'Action requise. Contact avec l\'enseignant.' },
 };
 
 export default function ParentDashboard() {
@@ -35,6 +35,7 @@ export default function ParentDashboard() {
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [selectedEval, setSelectedEval] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'enfant' | 'parent'>('parent');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -187,37 +188,102 @@ export default function ParentDashboard() {
             )}
 
             {selectedEval && (
-              <div style={{ marginBottom: '40px' }}>
-                <h3>📊 Évaluation du {new Date(selectedEval.date_evaluation).toLocaleDateString('fr-FR')}</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
-                  {COMPETENCES.map(comp => {
-                    const niveau = selectedEval[comp.key];
-                    const niveauInfo = NIVEAUX[niveau];
-                    return (
-                      <div
-                        key={comp.key}
-                        style={{
-                          padding: '15px',
-                          borderRadius: '8px',
-                          backgroundColor: niveauInfo ? niveauInfo.color + '22' : '#f0f0f0',
-                          border: `3px solid ${niveauInfo ? niveauInfo.color : '#ddd'}`,
-                          textAlign: 'center',
-                        }}
-                      >
-                        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '0.9rem' }}>{comp.labelComplet}</p>
-                        {niveauInfo && (
-                          <>
-                            <div style={{ fontSize: '2rem', marginBottom: '5px' }}>{niveauInfo.symbols}</div>
-                            <p style={{ margin: '5px 0', fontWeight: 'bold', color: niveauInfo.color, fontSize: '0.85rem' }}>
-                              {niveauInfo.messageParent}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
+              <>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  <button
+                    onClick={() => setViewMode('enfant')}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: viewMode === 'enfant' ? '#007bff' : '#ddd',
+                      color: viewMode === 'enfant' ? 'white' : 'black',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    👧 Vue enfant
+                  </button>
+                  <button
+                    onClick={() => setViewMode('parent')}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: viewMode === 'parent' ? '#007bff' : '#ddd',
+                      color: viewMode === 'parent' ? 'white' : 'black',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    👨‍👩‍👧 Vue parent
+                  </button>
                 </div>
-              </div>
+
+                <div style={{ marginBottom: '40px' }}>
+                  <h3>📊 Évaluation du {new Date(selectedEval.date_evaluation).toLocaleDateString('fr-FR')}</h3>
+
+                  {viewMode === 'enfant' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                      {COMPETENCES.map(comp => {
+                        const niveau = selectedEval[comp.key];
+                        const niveauInfo = NIVEAUX[niveau];
+                        return (
+                          <div
+                            key={comp.key}
+                            style={{
+                              padding: '15px',
+                              borderRadius: '8px',
+                              backgroundColor: niveauInfo ? niveauInfo.color + '22' : '#f0f0f0',
+                              border: `3px solid ${niveauInfo ? niveauInfo.color : '#ddd'}`,
+                              textAlign: 'center',
+                            }}
+                          >
+                            <h4 style={{ margin: '0 0 10px 0' }}>{comp.label}</h4>
+                            {niveauInfo && (
+                              <>
+                                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
+                                  {niveauInfo.symbols}
+                                </div>
+                                <p style={{ margin: '10px 0', fontWeight: 'bold', color: niveauInfo.color }}>
+                                  {niveauInfo.messageEnfant}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#e3f2fd' }}>
+                          <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Compétence</th>
+                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Niveau</th>
+                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {COMPETENCES.map(comp => {
+                          const niveau = selectedEval[comp.key];
+                          const niveauInfo = NIVEAUX[niveau];
+                          return (
+                            <tr key={comp.key}>
+                              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{comp.labelComplet}</td>
+                              <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', fontWeight: 'bold' }}>
+                                {niveauInfo ? niveauInfo.symbols : '-'}
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', color: niveauInfo ? niveauInfo.color : '#999' }}>
+                                {niveauInfo ? niveauInfo.messageParent : 'Non évalué'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
             )}
 
             {evaluations.length === 0 && (
@@ -243,7 +309,7 @@ export default function ParentDashboard() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <p style={{ fontWeight: 'bold', margin: 0 }}>✍️ Enseignant</p>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                          📅 {new Date(comment.date_creation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          📅 {new Date(comment.date_creation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       <p style={{ margin: 0, lineHeight: '1.6' }}>{comment.contenu}</p>
