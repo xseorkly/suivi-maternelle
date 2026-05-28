@@ -33,6 +33,7 @@ export default function ParentDashboard() {
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<number>(0);
   const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [selectedEval, setSelectedEval] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
 
   useEffect(() => {
@@ -99,8 +100,19 @@ export default function ParentDashboard() {
         .eq('eleve_id', selectedChild)
         .order('date_creation', { ascending: false });
 
-      if (evalData) setEvaluations(evalData);
-      if (commentData) setComments(commentData);
+      if (evalData && evalData.length > 0) {
+        setEvaluations(evalData);
+        setSelectedEval(evalData[0]);
+      } else {
+        setEvaluations([]);
+        setSelectedEval(null);
+      }
+
+      if (commentData) {
+        setComments(commentData);
+      } else {
+        setComments([]);
+      }
     };
 
     loadData();
@@ -114,7 +126,6 @@ export default function ParentDashboard() {
   if (loading) return <div className={styles.container}>Chargement...</div>;
 
   const currentChild = children.find(c => c.id === selectedChild);
-  const latestEval = evaluations.length > 0 ? evaluations[0] : null;
 
   return (
     <div className={styles.container}>
@@ -146,15 +157,41 @@ export default function ParentDashboard() {
           <>
             <div style={{ padding: '20px', backgroundColor: '#e3f2fd', borderRadius: '8px', marginBottom: '30px' }}>
               <h2>{currentChild.prenom} {currentChild.nom}</h2>
-              <p style={{ fontSize: '1.1rem', marginBottom: 0 }}>📍 Classe : <strong>{currentChild.classe_id ? 'MS' : 'Non spécifiée'}</strong></p>
+              <p style={{ fontSize: '1.1rem', marginBottom: 0 }}>📍 Classe : <strong>MS</strong></p>
             </div>
 
-            {latestEval && (
+            {evaluations.length > 0 && (
               <div style={{ marginBottom: '40px' }}>
-                <h3>📊 Dernière évaluation ({new Date(latestEval.date_evaluation).toLocaleDateString('fr-FR')})</h3>
+                <h3>📅 Évaluations disponibles</h3>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  {evaluations.map(eval_ => (
+                    <button
+                      key={eval_.id}
+                      onClick={() => setSelectedEval(eval_)}
+                      style={{
+                        padding: '10px 15px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        backgroundColor: selectedEval?.id === eval_.id ? '#007bff' : '#f0f0f0',
+                        color: selectedEval?.id === eval_.id ? 'white' : 'black',
+                        transition: 'all 0.3s'
+                      }}
+                    >
+                      📅 {new Date(eval_.date_evaluation).toLocaleDateString('fr-FR')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedEval && (
+              <div style={{ marginBottom: '40px' }}>
+                <h3>📊 Évaluation du {new Date(selectedEval.date_evaluation).toLocaleDateString('fr-FR')}</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
                   {COMPETENCES.map(comp => {
-                    const niveau = latestEval[comp.key];
+                    const niveau = selectedEval[comp.key];
                     const niveauInfo = NIVEAUX[niveau];
                     return (
                       <div
@@ -171,7 +208,7 @@ export default function ParentDashboard() {
                         {niveauInfo && (
                           <>
                             <div style={{ fontSize: '2rem', marginBottom: '5px' }}>{niveauInfo.symbols}</div>
-                            <p style={{ margin: '5px 0', fontWeight: 'bold', color: niveauInfo.color, fontSize: '0.9rem' }}>
+                            <p style={{ margin: '5px 0', fontWeight: 'bold', color: niveauInfo.color, fontSize: '0.85rem' }}>
                               {niveauInfo.messageParent}
                             </p>
                           </>
@@ -183,9 +220,15 @@ export default function ParentDashboard() {
               </div>
             )}
 
+            {evaluations.length === 0 && (
+              <div style={{ padding: '20px', backgroundColor: '#f0f0f0', borderRadius: '8px', textAlign: 'center', marginBottom: '40px' }}>
+                <p style={{ color: '#666' }}>Aucune évaluation disponible pour le moment.</p>
+              </div>
+            )}
+
             {comments.length > 0 && (
               <div style={{ marginBottom: '40px' }}>
-                <h3>💬 Commentaires de l\'enseignant</h3>
+                <h3>💬 Commentaires de l\'enseignant ({comments.length})</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {comments.map(comment => (
                     <div
@@ -198,9 +241,9 @@ export default function ParentDashboard() {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <p style={{ fontWeight: 'bold', margin: 0 }}>✍️ {comment.enseignant_nom || 'Enseignant'}</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>✍️ Enseignant</p>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                          📅 {new Date(comment.date_creation).toLocaleDateString('fr-FR')}
+                          📅 {new Date(comment.date_creation).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                       </div>
                       <p style={{ margin: 0, lineHeight: '1.6' }}>{comment.contenu}</p>
